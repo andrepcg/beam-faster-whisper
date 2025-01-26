@@ -4,7 +4,7 @@ import requests
 from tempfile import NamedTemporaryFile
 
 from predict import Predictor
-from models import load_models, cache_path
+from models import load_models, BEAM_VOLUME_PATH
 
 def parse_audio(audio_base64, url):
     if audio_base64 and url:
@@ -24,12 +24,7 @@ def parse_audio(audio_base64, url):
         resp = requests.get(url)
         binary_data = resp.content
 
-    with NamedTemporaryFile() as temp:
-        # Write the audio data to the temporary file
-        temp.write(binary_data)
-        temp.flush()
-
-        return temp
+    return binary_data
 
 
 def on_start():
@@ -49,7 +44,7 @@ def on_start():
     .add_python_packages("./requirements.txt")
     .with_envs("HF_HUB_ENABLE_HF_TRANSFER=1"),
     volumes=[
-        Volume(name="cached_models", mount_path=cache_path)
+        Volume(name="cached_models", mount_path=BEAM_VOLUME_PATH)
     ],
 )
 def transcribe(context, **inputs):
@@ -70,17 +65,22 @@ def transcribe(context, **inputs):
     text = ""
 
     try:
-        temp_file = parse_audio(audio_base64, url)
+        binary_data = parse_audio(audio_base64, url)
         # results = Predictor(model).predict(temp.name, transcription=transcription, language=language)
         # return results
 
-        segments, _ = model.transcribe(temp_file.name, beam_size=5, language=language)
+        with NamedTemporaryFile() as temp:
+            # Write the audio data to the temporary file
+            temp.write(binary_data)
+            temp.flush()
 
-        for segment in segments:
-            text += segment.text + " "
+            segments, _ = model.transcribe(temp.name, beam_size=5, language=language)
 
-        print(text)
-        return {"text": text}
+            for segment in segments:
+                text += segment.text + " "
+
+            print(text)
+            return {"text": text}
 
     except Exception as e:
         return {"error": f"Something went wrong: {e}"}

@@ -3,9 +3,6 @@ from utils import is_cuda_available
 
 BEAM_VOLUME_PATH = "./cached_models"
 
-def cache_path():
-    return BEAM_VOLUME_PATH
-
 def build_model(path):
     from faster_whisper import WhisperModel
 

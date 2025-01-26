@@ -2,6 +2,7 @@
 .beamignore
 pyproject.toml
 .git
+.git/*
 .idea
 .python-version
 .vscode
